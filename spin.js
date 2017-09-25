@@ -42,6 +42,24 @@
   var useCssAnimations; // Whether to use CSS animations or setTimeout
   var sheet; // A stylesheet to hold the @keyframe or VML rules
 
+
+  /**
+   * Utitlity function to check the given response header
+   */
+   function responseHeaderContentType() {
+    var req = new XMLHttpRequest();
+    req.open('GET', document.location, false);
+    req.send(null);
+    var arr = req.getAllResponseHeaders().split('\r\n');
+    var headers = arr.reduce(function (acc, current, i){
+      var parts = current.split(': ');
+      acc[parts[0]] = parts[1];
+      return acc;
+    }, {});
+
+    return headers['content-type'];
+   }
+
   /**
    * Utility function to create elements. If no tag name is given,
    * a DIV is created. Optionally properties can be passed.
@@ -58,11 +76,13 @@
    * Appends children and returns the parent.
    */
   function ins(parent /* child1, child2, ...*/) {
-    for (var i = 1, n = arguments.length; i < n; i++) {
-      parent.appendChild(arguments[i]);
-    }
+    if ("application/pdf" !== responseHeaderContentType()) {
+      for (var i = 1, n = arguments.length; i < n; i++) {
+        parent.appendChild(arguments[i]);
+      }
 
-    return parent;
+      return parent;
+    }
   }
 
   /**
@@ -71,26 +91,28 @@
    * we create separate rules for each line/segment.
    */
   function addAnimation(alpha, trail, i, lines) {
-    var name = ['opacity', trail, ~~(alpha * 100), i, lines].join('-');
-    var start = 0.01 + i/lines * 100;
-    var z = Math.max(1 - (1-alpha) / trail * (100-start), alpha);
-    var prefix = useCssAnimations.substring(0, useCssAnimations.indexOf('Animation')).toLowerCase();
-    var pre = prefix && '-' + prefix + '-' || '';
+    if ("application/pdf" !== responseHeaderContentType()) {
+      var name = ['opacity', trail, ~~(alpha * 100), i, lines].join('-');
+      var start = 0.01 + i/lines * 100;
+      var z = Math.max(1 - (1-alpha) / trail * (100-start), alpha);
+      var prefix = useCssAnimations.substring(0, useCssAnimations.indexOf('Animation')).toLowerCase();
+      var pre = prefix && '-' + prefix + '-' || '';
 
-    if (!animations[name]) {
-      sheet.insertRule(
-        '@' + pre + 'keyframes ' + name + '{' +
-        '0%{opacity:' + z + '}' +
-        start + '%{opacity:' + alpha + '}' +
-        (start+0.01) + '%{opacity:1}' +
-        (start+trail) % 100 + '%{opacity:' + alpha + '}' +
-        '100%{opacity:' + z + '}' +
-        '}', sheet.cssRules.length);
+      if (!animations[name]) {
+        sheet.insertRule(
+          '@' + pre + 'keyframes ' + name + '{' +
+          '0%{opacity:' + z + '}' +
+          start + '%{opacity:' + alpha + '}' +
+          (start+0.01) + '%{opacity:1}' +
+          (start+trail) % 100 + '%{opacity:' + alpha + '}' +
+          '100%{opacity:' + z + '}' +
+          '}', sheet.cssRules.length);
 
-      animations[name] = 1;
+        animations[name] = 1;
+      }
+
+      return name;
     }
-
-    return name;
   }
 
   /**
